@@ -1,0 +1,49 @@
+<Project Sdk="Godot.NET.Sdk/4.7.0-dev">
+  <PropertyGroup>
+    <AssemblyName>CSharpSample</AssemblyName>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(LinkLibGodot) == 'true'">
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <OutputType>exe</OutputType>
+    <EnableDynamicLoading>false</EnableDynamicLoading>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <PublishAOT>true</PublishAOT>
+    <PublishAotUsingRuntimePack>true</PublishAotUsingRuntimePack>
+    <UseNativeAOTRuntime>true</UseNativeAOTRuntime>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+
+    <CppCompilerAndLinker>clang++</CppCompilerAndLinker>
+    <LinkerFlavor>lld</LinkerFlavor>
+    <LinkStandardCPlusPlusLibrary>true</LinkStandardCPlusPlusLibrary>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(LinkLibGodot) == 'true'">
+    <!-- Root the assemblies to avoid trimming. -->
+    <TrimmerRootAssembly Include="GodotSharp" />
+    <TrimmerRootAssembly Include="$(TargetName)" />
+
+    <DirectPInvoke Include="libgodot" />
+    <NativeLibrary Include="$(MSBuildProjectDirectory)/../godot/bin/libgodot.linuxbsd.template_debug.x86_64.llvm.static.mono.a" Condition=" $(RuntimeIdentifier.StartsWith('linux')) And '$(Configuration)' == 'ExportDebug' " />
+    <NativeLibrary Include="$(MSBuildProjectDirectory)/../godot/bin/libgodot.linuxbsd.template_release.x86_64.llvm.static.mono.a" Condition=" $(RuntimeIdentifier.StartsWith('linux')) And '$(Configuration)' == 'ExportRelease' " />
+    
+    <!-- I could only link them with allow-multiple-definition, the error I got was about multiple existing symbols for -->
+    <!-- vtable "Object", I guess Godot's Object and C#'s Object has the same name even in symbol map -->
+    <!-- put godot's Object in namespace for now -->
+    <!-- <LinkerArg Include="-Wl,- -allow-multiple-definition" Condition="$(RuntimeIdentifier.StartsWith('linux'))" /> -->
+    <LinkerArg Include="-static-libstdc++ -static-libgcc" />
+  </ItemGroup>
+
+
+  <Target Name="CopyFiles" AfterTargets="Publish" Condition="$(LinkLibGodot) == 'true'">
+    <ItemGroup>
+      <MyDistFiles Include="$(PublishDir)/**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MyDistFiles)" DestinationFolder="$(MSBuildProjectDirectory)/templates/$(Configuration)" />
+  </Target>
+</Project>
