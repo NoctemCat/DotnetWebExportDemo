@@ -2,49 +2,81 @@
 export PATH=$PATH
 
 
-__parse_godot_args() {
-    local suffix=""
-    while :; do
-        if [ "$1" = "mono" ]; then
-            mono_args="module_mono_enabled=yes module_mono_use_libgodot_static=yes"
-            shift
-        elif [ "$1" = "executable" ]; then
-            type_args="library_type=executable"
-            suffix="executable"
-            shift
-        elif [ "$1" = "static" ]; then
-            type_args="library_type=static_library lto=none"
-            suffix="static"
-            shift
-        elif [ "$1" = "shared" ]; then
-            type_args="library_type=shared_library"
-            suffix="shared"
-            shift
-        else
-            break
-        fi
-    done
-    if [ -n "$mono_args" ]; then
-        suffix="${suffix}.mono"
-    fi
-    type_args="${type_args} extra_suffix=${suffix}"
-    args="$@"
-}
+__is_interactive=false
+
+__string_contain() { case $2 in *$1* ) return 0;; *) return 1;; esac ;}
 
 
 __call_print() {
     echo "$@"
-    ("$@")
+    local call=true
+    if [ "$__is_interactive" = "true" ]; then
+        echo "Confirm [Y/n]"
+        read __confirm
+        if [ "$__confirm" = "n" ] || [ "$__confirm" = "N" ]; then
+            call=false
+        fi
+    fi
+    if [ "$call" = "true" ]; then
+        ("$@")
+    fi
 }
 
-__build_godot_editor() {
-    local mono_args=""
-    local type_args=""
-    local args=""
-    __parse_godot_args executable "$@"
 
-    __call_print scons target=editor $type_args production=yes debug_symbols=yes use_llvm=yes linker=lld compiledb=yes $mono_args $args
-    if [ -n "$mono_args" ]; then
+__parse_args(){
+    local cli_args=("mono" "executable" "static" "shared" "suffix")
+    while :; do
+        local matched=false
+        local variable="$1"
+        for arg in ${cli_args[@]}; do
+            if [ "${variable%=*}" = "$arg" ]; then
+                matched=true
+                local value="${variable#*=}"
+                if ! __string_contain "=" "$variable" || [ -z "$value" ]; then
+                    value=true
+                fi
+                declare -g "arg_${arg}=$value"
+                shift
+                break
+            fi
+        done
+        if [ "$matched" = false ]; then
+            break
+        fi
+    done
+
+    arg_rest=("$@")
+}
+
+
+__parse_godot_args() {
+    local suffix=""
+    __parse_args "$@"
+
+    if [ "$arg_executable" = true ]; then
+        type_args="library_type=executable"
+        suffix="executable"
+    elif [ "$arg_static" = true ]; then
+        type_args="library_type=static_library lto=none"
+        suffix="static"
+    elif [ "$arg_shared" = true ]; then
+        type_args="library_type=shared_library"
+        suffix="shared"
+    fi
+    if [ "$arg_mono" = true ]; then
+        mono_args="module_mono_enabled=yes"
+        suffix="${suffix}.mono"
+    fi
+
+    type_args="${type_args} extra_suffix=${suffix}"
+}
+
+
+__build_godot_editor() {
+    __parse_godot_args "$@"
+
+    __call_print scons target=editor $type_args production=yes debug_symbols=yes use_llvm=yes linker=lld compiledb=yes $mono_args $arg_rest
+    if [ "$arg_executable" = true ] && [ -n "$mono_args" ]; then
         __call_print find ./bin -name "godot.*.editor.*executable.mono*" -type f -exec {} --generate-mono-glue ./modules/mono/glue ';'
         __call_print ./modules/mono/build_scripts/build_assemblies.py --godot-output-dir ./bin --push-nupkgs-local ./../.nuget_local/
     fi
@@ -52,22 +84,16 @@ __build_godot_editor() {
 
 
 __build_godot_template_debug() {
-    local mono_args=""
-    local type_args=""
-    local args=""
-    __parse_godot_args static "$@"
+    __parse_godot_args "$@"
 
-    __call_print scons target=template_debug $type_args production=yes debug_symbols=yes use_llvm=yes linker=lld compiledb=yes $mono_args $args
+    __call_print scons target=template_debug $type_args production=yes debug_symbols=yes use_llvm=yes linker=lld compiledb=yes $mono_args $arg_rest
 }
 
 
 __build_godot_template_release() {
-    local mono_args=""
-    local type_args=""
-    local args=""
-    __parse_godot_args static "$@"
+    __parse_godot_args "$@"
 
-    __call_print scons target=template_release $type_args production=yes use_llvm=yes linker=lld compiledb=yes $mono_args $args
+    __call_print scons target=template_release $type_args production=yes use_llvm=yes linker=lld compiledb=yes $mono_args $arg_rest
 }
 
 
@@ -87,25 +113,52 @@ __build_godot() {
     cd ./..
 }
 
-__build_cpp_generic() {
-    if [ ! -d "./biuld" ]; then
-        export CMAKE_GENERATOR="Ninja Multi-Config"
-        export CC="clang"
-        export CXX="clang++"
-        __call_print cmake -S . -B build
+
+__parse_cpp_args() {
+    __parse_args "$@"
+
+    godot_type="static"
+    if [ "$arg_static" = true ]; then
+        godot_type="static"
+    elif [ "$arg_shared" = true ]; then
+        godot_type="shared"
     fi
-    __call_print cmake --build build --config "$1" --target "$2"
+
+    godot_platform=${arg_rest[0]}
+
+    if [ -z "$arg_suffix" ] && [ "$godot_platform" = "linuxbsd" ]; then
+        arg_suffix="llvm"
+    fi
 }
 
+
+__build_cpp_generic() {
+    export CMAKE_GENERATOR="Ninja"
+    local args=""
+    if [ "$godot_platform" = "web" ]; then
+        args="-DGODOT_ARCH=wasm32 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake -DCMAKE_PROJECT_INCLUDE=../godot-cpp/cmake/emsdkHack.cmake"
+    else
+        export CC="clang"
+        export CXX="clang++"
+    fi
+    __call_print cmake -S . -B "build/$godot_platform/$1_$godot_type" -DCMAKE_BUILD_TYPE=GodotConfig -DGODOT_TARGET="$1" -DGODOT_PLATFORM=$godot_platform -DGODOT_TYPE=$godot_type -DEXTRA_SUFFIX="$arg_suffix" $args
+    __call_print cmake --build "build/$godot_platform/$1_$godot_type"
+}
+
+
 __build_cpp_editor() {
-    __build_cpp_generic Release editor
+    __parse_cpp_args "$@"
+    __build_cpp_generic editor
 }
 __build_cpp_template_debug() {
-    __build_cpp_generic RelWithDebInfo template_debug
+    __parse_cpp_args "$@"
+    __build_cpp_generic template_debug
 }
 __build_cpp_template_release() {
-    __build_cpp_generic Release template_release
+    __parse_cpp_args "$@"
+    __build_cpp_generic template_release
 }
+
 
 __build_cpp() {
     cd ./cpp_project
@@ -123,6 +176,7 @@ __build_cpp() {
     cd ./..
 }
 
+
 __build_csharp_editor() {
     __call_print dotnet build
 }
@@ -134,6 +188,7 @@ __build_csharp_template_release() {
     __build_cpp_generic Release template_release
     __call_print dotnet publish -c ExportRelease -p:LinkLibGodot=true
 }
+
 
 __build_csharp() {
     cd ./csharp_project
@@ -150,12 +205,14 @@ __build_csharp() {
     fi
     cd ./..
 }
+
+
 build() {
     if [ "$1" = "godot" ]; then
         __build_godot "${@:2}"
-    elif [ "$1" = "cpp" ] || [ "$1" = "c++" ]; then
+    elif [ "$1" = "cpp" ]; then
         __build_cpp "${@:2}"
-    elif [ "$1" = "csharp" ] || [ "$1" = "c#" ]; then
+    elif [ "$1" = "csharp" ]; then
         __build_csharp "${@:2}"
     else
         echo "No target"
@@ -165,7 +222,8 @@ build() {
 
 print_help() {
     echo "Available commands:"
-    echo "-bash run build godot [editor|template_debug|template_release] [mono] [executable|static|shared]"
+    echo "-bash run build godot [editor|template_debug|template_release] executable|static|shared [mono] [scons args]"
+    echo "-bash run build cpp [static|shared] [suffix=] linuxbsd|windows|macos|web"
 }
 
 
@@ -174,10 +232,16 @@ __handle_cmdline_args() {
         print_help
         return 0
     fi
+    if  [ "$1" = "-i" ]; then
+        __is_interactive=true
+        shift
+    fi
+
+    __cmdline_rest="($@)"
     return 1
 }
 
 
 if ! __handle_cmdline_args "$@"; then
-    eval "($@)"
+    eval "$__cmdline_rest"
 fi 

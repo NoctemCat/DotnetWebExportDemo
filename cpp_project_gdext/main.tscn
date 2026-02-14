@@ -37,9 +37,8 @@ data = PackedVector3Array(50, -50, 0, -50, -50, 0, 50, 50, 0, -50, -50, 0, -50, 
 transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 12.278265, 0)
 shadow_enabled = true
 
-[node name="Player" type="PlayerNative" parent="." unique_id=1381059273 node_paths=PackedStringArray("pivot")]
+[node name="Player" type="Player" parent="." unique_id=1101291886 node_paths=PackedStringArray("pivot")]
 pivot = NodePath("Pivot")
-process_mode = 3
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.280751, 0)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Player" unique_id=1039885854]

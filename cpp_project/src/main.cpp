@@ -8,15 +8,48 @@
 #include <godot_cpp/core/engine_ptrcall.hpp>
 #include <godot_cpp/godot.hpp>
 
-#include <string>
-#include <vector>
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
+
+// godot_js.h
+extern "C" char *godot_js_emscripten_get_version();
+extern "C" void godot_js_os_finish_async(void (*p_callback)());
+
+void print_web_header() {
+    using namespace godot;
+    // Emscripten.
+    char *emscripten_version_char = godot_js_emscripten_get_version();
+    godot::String emscripten_version = godot::vformat("Emscripten %s", emscripten_version_char);
+    // `free()` is used here because it's not memory that was allocated by Godot.
+    free(emscripten_version_char);
+
+    // Build features.
+    String thread_support =
+        OS::get_singleton()->has_feature("threads") ? "multi-threaded" : "single-threaded";
+    String extensions_support = OS::get_singleton()->has_feature("web_extensions")
+                                    ? "GDExtension support"
+                                    : "no GDExtension support";
+
+    PackedStringArray build_configuration = {
+        emscripten_version, thread_support, extensions_support
+    };
+    print_line(vformat("Build configuration: %s.", String(", ").join(build_configuration)));
+}
+#endif
 
 extern "C" {
-
 static void initialize_default_module(godot::ModuleInitializationLevel p_level) {
-    if (p_level != godot::MODULE_INITIALIZATION_LEVEL_SCENE) { return; }
-
-    GDREGISTER_CLASS(sample::Player);
+#ifdef __EMSCRIPTEN__
+    if (p_level == godot::MODULE_INITIALIZATION_LEVEL_CORE) { print_web_header(); }
+    if (p_level == godot::MODULE_INITIALIZATION_LEVEL_SCENE) {
+        godot::ResourceLoader::get_singleton()->set_abort_on_missing_resources(false);
+    }
+#endif
+    if (p_level == godot::MODULE_INITIALIZATION_LEVEL_SCENE) {
+        GDREGISTER_CLASS(sample::PlayerNative);
+    }
 }
 
 static void uninitialize_default_module(godot::ModuleInitializationLevel p_level) {
@@ -43,7 +76,7 @@ class LibGodot {
 public:
     LibGodot() {}
 
-    godot::GodotInstance *create_godot_instance(
+    static godot::GodotInstance *create_godot_instance(
         int p_argc, char *p_argv[],
         GDExtensionInitializationFunction p_init_func = gdextension_default_init
     ) {
@@ -56,27 +89,17 @@ public:
         );
     }
 
-    void destroy_godot_instance(godot::GodotInstance *instance) {
+    static void destroy_godot_instance(godot::GodotInstance *instance) {
         libgodot_destroy_godot_instance(instance->_owner);
     }
-
-private:
-    void *handle = nullptr;
-    GDExtensionObjectPtr (*func_libgodot_create_godot_instance)(
-        int, char *[], GDExtensionInitializationFunction
-    ) = nullptr;
-    void (*func_libgodot_destroy_godot_instance)(GDExtensionObjectPtr) = nullptr;
 };
 
-extern "C" bool godotsharp_game_main_init(void *, void *, const void **, int32_t) {
-    return false;
-}
+#ifndef __EMSCRIPTEN__
 
 int main(int argc, char **argv) {
     std::cout << ">>>>>>> Custom main\n";
-    LibGodot libgodot;
 
-    godot::GodotInstance *instance = libgodot.create_godot_instance(argc, argv);
+    godot::GodotInstance *instance = LibGodot::create_godot_instance(argc, argv);
     if (instance == nullptr) {
         fprintf(stderr, "Error creating Godot instance\n");
         return EXIT_FAILURE;
@@ -86,7 +109,54 @@ int main(int argc, char **argv) {
 
     std::cout << ">>>>>>> Custom start\n";
     while (!instance->iteration()) {}
-    libgodot.destroy_godot_instance(instance);
+    LibGodot::destroy_godot_instance(instance);
 
     return EXIT_SUCCESS;
 }
+#else
+
+static godot::GodotInstance *instance = nullptr;
+static bool shutdown_complete = false;
+
+void exit_callback() {
+    if (!shutdown_complete) {
+        return; // Still waiting.
+    }
+    if (instance != nullptr) {
+        std::cout << ">>>>>>> Custom destroy\n";
+        LibGodot::destroy_godot_instance(instance);
+        instance = nullptr;
+    }
+
+    emscripten_force_exit(EXIT_SUCCESS);
+}
+
+void cleanup_after_sync() {
+    shutdown_complete = true;
+}
+
+void main_loop_callback() {
+    if (instance->iteration()) {
+        emscripten_cancel_main_loop();
+        emscripten_set_main_loop(exit_callback, -1, false);
+        godot_js_os_finish_async(cleanup_after_sync);
+    }
+}
+
+int main(int argc, char **argv) {
+    std::cout << ">>>>>>> Custom main\n";
+
+    instance = LibGodot::create_godot_instance(argc, argv);
+    if (instance == nullptr) {
+        fprintf(stderr, "Error creating Godot instance\n");
+        return EXIT_FAILURE;
+    }
+    std::cout << ">>>>>>> Custom init\n";
+
+    instance->start();
+    std::cout << ">>>>>>> Custom start\n";
+    emscripten_set_main_loop(main_loop_callback, -1, false);
+    main_loop_callback();
+    return EXIT_SUCCESS;
+}
+#endif

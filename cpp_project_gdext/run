@@ -1,0 +1,47 @@
+#!/bin/bash
+export PATH=$PATH
+
+
+__call_print() {
+    echo "$@"
+    ("$@")
+}
+
+
+__build_cpp_generic() {
+    if [ ! -d "./build/$1" ]; then
+        export CMAKE_GENERATOR="Ninja Multi-Config"
+        local args=""
+        if [ "$1" = "web" ]; then
+            args="-DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+        else
+            export CC="clang"
+            export CXX="clang++"
+        fi
+        __call_print cmake -S . -B build/$1 ${args} -DOUTPUT_FOLDER="$1" -DCMAKE_PROJECT_INCLUDE=../godot-cpp/cmake/emsdkHack.cmake
+    fi
+    __call_print cmake --build build/$1 --config "$2"
+}
+
+build_cpp() {
+    if [ "$2" = "release" ]; then
+        __build_cpp_generic "$1" Release "${@:3}"
+    elif [ "$2" = "debug" ]; then
+        __build_cpp_generic "$1" Debug "${@:23}"
+    else
+        __build_cpp_generic "$1" Release "${@:2}"
+        __build_cpp_generic "$1" Debug "${@:2}"
+    fi
+}
+
+build() {
+    if [ "$1" = "linux" ]; then
+        build_cpp linux "${@:2}"
+    elif [ "$1" = "web" ]; then
+        build_cpp web "${@:2}"
+    else
+        echo "No target"
+    fi
+}
+
+eval "($@)"

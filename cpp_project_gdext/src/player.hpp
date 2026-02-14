@@ -10,14 +10,14 @@
 
 namespace sample {
 
-class PlayerNative : public godot::CharacterBody3D {
-    GDCLASS(PlayerNative, godot::CharacterBody3D)
+class Player : public godot::CharacterBody3D {
+    GDCLASS(Player, godot::CharacterBody3D)
 
 public:
     void _ready() override;
     void _physics_process(double delta) override;
     void process_mouse();
-    void _input(const godot::Ref<godot::InputEvent> &event) override;
+    void _unhandled_input(const godot::Ref<godot::InputEvent> &event) override;
     static void _bind_methods();
 
     godot::Node3D *pivot{nullptr};

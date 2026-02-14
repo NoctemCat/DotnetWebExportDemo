@@ -1,0 +1,5 @@
+      
+CompileFlags:
+  # Allows the usage of "--query-driver=**/em++,**/clang*" for web build
+  BuiltinHeaders: QueryDriver
+  Remove: [-s*]

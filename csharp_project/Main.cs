@@ -293,10 +293,10 @@ public unsafe static class SimpleInterface
 
 public static class LibGodot
 {
-    [DllImport("libgodot", EntryPoint = "libgodot_create_godot_instance", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("libgodot", EntryPoint = "libgodot_create_godot_instance")]
     private static unsafe extern nint libgodot_create_godot_instance(int argc, nint* argv, nint initFunc);
 
-    [DllImport("libgodot", EntryPoint = "libgodot_destroy_godot_instance", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("libgodot", EntryPoint = "libgodot_destroy_godot_instance")]
     private static extern void libgodot_destroy_godot_instance(nint godotInstance);
 
     [UnmanagedCallersOnly]
