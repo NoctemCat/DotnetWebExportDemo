@@ -6,6 +6,8 @@
         <EnableDynamicLoading>true</EnableDynamicLoading>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <ProjectDirectory>$(MSBuildProjectDirectory)</ProjectDirectory>
+        <ProjectDirectory Condition="$(MSBuildProjectDirectory.Contains('\\'))">$(MSBuildProjectDirectory.Replace('\', '/'))</ProjectDirectory>
     </PropertyGroup>
 
     <PropertyGroup Condition="$(GodotType) != ''">
@@ -39,9 +41,9 @@
 
         <GodotSuffix>$(GodotExtraSuffix)$(GodotType).mono.$(GodotPlatformSuffix)</GodotSuffix>
 
-        <!-- Bundle .pck file with PublishSingleFile. Linux only for testing -->
+        <!-- Bundle .pck file with PublishSingleFile. -->
         <BundlePackage>false</BundlePackage>
-        <BundlePackage Condition="$(GodotTarget) != 'editor' And $(GodotType) == 'shared' And $(GodotTargetPlatform) == 'linuxbsd'">true</BundlePackage>
+        <BundlePackage Condition="$(GodotTarget) != 'editor' And $(GodotType) == 'shared'">true</BundlePackage>
 
         <GodotLibraryName>libgodot</GodotLibraryName>
         <GodotLibraryName Condition="$(GodotTargetPlatform) == 'web' And $(GodotType) == 'shared'">godot.side</GodotLibraryName>
@@ -141,11 +143,11 @@
         <_MonoComponent Include="marshal-ilgen" Condition="$(RunAOTCompilation) != 'true'" />
 
         <!-- Evil hack, more information inside "transferCanvas.js" -->
-        <LinkerArg Include="--js-library $(MSBuildProjectDirectory)/web_interop/transferCanvas.js" Condition="$(UseOffscreenCanvas) == 'true'" />
+        <LinkerArg Include="--js-library $(ProjectDirectory)/web_interop/transferCanvas.js" Condition="$(UseOffscreenCanvas) == 'true'" />
         <EmccExportedLibraryFunction Include="$setupPThreadInterceptor" Condition="$(UseOffscreenCanvas) == 'true'" />
 
         <!-- Missing functions??? Yeah, couldn't add them, so just stubbed them -->
-        <LinkerArg Include="--js-library $(MSBuildProjectDirectory)/web_interop/setjmpStub.js" />
+        <LinkerArg Include="--js-library $(ProjectDirectory)/web_interop/setjmpStub.js" />
 
         <EmccExportedFunction Include="$(GODOT_EMCC_EXPORTED_FUNCTIONS)" Condition="$(GODOT_EMCC_EXPORTED_FUNCTIONS) != ''" />
         <EmccExportedRuntimeMethod Include="$(GODOT_EMCC_EXPORTED_RUNTIME_METHODS)" Condition="$(GODOT_EMCC_EXPORTED_RUNTIME_METHODS) != ''" />
@@ -154,7 +156,7 @@
         <_GodotJsLibs Include="$(GODOT_EMCC_JS_LIBRARIES)" />
         <_GodotPostJs Include="$(GODOT_EMCC_JS_POST)" />
         <!-- C# wasm lacks 'callMain', but we can use this to simplify starting interaction with godot -->
-        <LinkerArg Include="--post-js $(MSBuildProjectDirectory)/web_interop/callMainStub.js" />
+        <LinkerArg Include="--post-js $(ProjectDirectory)/web_interop/callMainStub.js" />
         <LinkerArg Include="@(_GodotPreJs -> '--pre-js %(Identity)', ' ')" Condition="$(GODOT_EMCC_JS_PRE) != ''" />
         <LinkerArg Include="@(_GodotJsLibs -> '--js-library %(Identity)', ' ')" Condition="$(GODOT_EMCC_JS_LIBRARIES) != ''" />
         <LinkerArg Include="@(_GodotPostJs -> '--post-js %(Identity)', ' ')" Condition="$(GODOT_EMCC_JS_POST) != ''" />
@@ -182,19 +184,19 @@
     <!-- Target that builds bundle -->
     <Target Name="GodotBundlePackage" BeforeTargets="GenerateSingleFileBundle" DependsOnTargets="PrepareForBundle" Condition="$(BundlePackage)">
         <PropertyGroup>
-            <GodotEditor>$(GodotExtraSuffix)executable.mono</GodotEditor>
-            <GodotEditor Condition="$(GodotTargetPlatform) == 'windows'">$(GodotEditor).exe</GodotEditor>
+            <GodotSuffix>$(GodotExtraSuffix)executable.mono</GodotSuffix>
+            <GodotSuffix Condition="$(GodotTargetPlatform) == 'windows'">$(GodotEditor).exe</GodotSuffix>
         </PropertyGroup>
 
-        <MakeDir Directories="$(MSBuildProjectDirectory)/export/linux_pck" />
+        <MakeDir Directories="$(ProjectDirectory)/export/linux_pck" />
 
-        <Exec Command="$(LibGodotBuildDir)godot.$(GodotTargetPlatform).editor.$(GodotEditor) --export-pack LinuxPck export/linux_pck/$(AssemblyName).pck --headless" ConsoleToMSBuild="true" WorkingDirectory="$(MSBuildProjectDirectory)">
+        <Exec Command="$(LibGodotBuildDir)godot.$(GodotTargetPlatform).editor.$(GodotSuffix) --export-pack LinuxPck export/linux_pck/$(AssemblyName).pck --headless" ConsoleToMSBuild="true" WorkingDirectory="$(ProjectDirectory)">
             <Output TaskParameter="ConsoleOutput" PropertyName="OutputOfExec" />
         </Exec>
 
         <ItemGroup>
             <!-- Include .pck file -->
-            <GodotPck Include="$(MSBuildProjectDirectory)/export/linux_pck/$(AssemblyName).pck" />
+            <GodotPck Include="$(ProjectDirectory)/export/linux_pck/$(AssemblyName).pck" />
             <!-- Add metadata for the relative path for GenerateBundle -->
             <GodotPck RelativePath="$(AssemblyName).pck" />
         </ItemGroup>
@@ -217,7 +219,7 @@
         <ItemGroup>
             <MyDistFiles Include="$(PublishDir)/**" />
         </ItemGroup>
-        <Copy SourceFiles="@(MyDistFiles)" DestinationFolder="$(MSBuildProjectDirectory)/templates/$(GodotTargetPlatform)/$(GodotTarget)_$(GodotType)/%(RecursiveDir)"  />
+        <Copy SourceFiles="@(MyDistFiles)" DestinationFolder="$(ProjectDirectory)/templates/$(GodotTargetPlatform)/$(GodotTarget)_$(GodotType)/%(RecursiveDir)"  />
     </Target>
     
     <!-- Build web template  -->
@@ -237,7 +239,7 @@
             <!-- Engine file with placeholder for emscripten module -->
             <GodotJsFile Include="$(IntermediateOutputPath)/web_template/godot.js" />
             <!-- File with module replacement -->
-            <ImplJsFile Include="$(MSBuildProjectDirectory)/web_interop/GodotImpl.js" />
+            <ImplJsFile Include="$(ProjectDirectory)/web_interop/GodotImpl.js" />
         </ItemGroup>
 
         <ReadLinesFromFile File="@(GodotJsFile)">
@@ -268,32 +270,33 @@
             SourceFiles="$(IntermediateOutputPath)/web_template/_framework/dotnet.native.wasm" 
             DestinationFiles="$(IntermediateOutputPath)/web_template/godot.wasm"/>
 
-        <MakeDir Directories="$(MSBuildProjectDirectory)/templates/$(GodotTargetPlatform)/$(GodotTarget)_$(GodotType)/" />
+        <MakeDir Directories="$(ProjectDirectory)/templates/$(GodotTargetPlatform)/$(GodotTarget)_$(GodotType)/" />
 
         <!-- Create the final web template -->
         <ZipDirectory
             SourceDirectory="$(IntermediateOutputPath)/web_template"
-            DestinationFile="$(MSBuildProjectDirectory)/templates/$(GodotTargetPlatform)/$(GodotTarget)_$(GodotType)/$(AssemblyName).zip"
+            DestinationFile="$(ProjectDirectory)/templates/$(GodotTargetPlatform)/$(GodotTarget)_$(GodotType)/$(AssemblyName).zip"
             Overwrite="true" />
     </Target>
 
     <!-- Automation for easier testing, expects more manual intervention -->
     <Target Name="ExportWeb" AfterTargets="BuildZip" Condition="$(GodotWebAutoExport) == 'true'">
+        <Error 
+                Text="Must specify GodotEditor argument, use -p:GodotEditor=YOUREDITORNAMEHERE" 
+                Condition="$(GodotEditor) == ''"/>
+        
         <PropertyGroup>
-            <GodotEditor>godot.linuxbsd.editor.x86_64.executable.mono</GodotEditor>
-            <GodotEditor Condition="$(GodotTargetPlatform) == 'windows'">$(GodotEditor).exe</GodotEditor>
             <ExportFolder Condition="'$(Configuration)' == 'ExportDebug'" >debug</ExportFolder>
             <ExportFolder Condition="'$(Configuration)' == 'ExportRelease'">release</ExportFolder>
 
             <ExportType>WebNothreads</ExportType>
             <ExportType Condition="$(WasmEnableThreads) == 'true'">Web</ExportType>
-
         </PropertyGroup>
 
-        <RemoveDir Directories="$(MSBuildProjectDirectory)/export/$(ExportType)_static_$(ExportFolder)" />
-        <MakeDir Directories="$(MSBuildProjectDirectory)/export/$(ExportType)_static_$(ExportFolder)" />
+        <RemoveDir Directories="$(ProjectDirectory)/export/$(ExportType)_static_$(ExportFolder)" />
+        <MakeDir Directories="$(ProjectDirectory)/export/$(ExportType)_static_$(ExportFolder)" />
 
-        <Exec Command="$(LibGodotBuildDir)$(GodotEditor) --export-$(ExportFolder) $(ExportType) export/$(ExportType)_static_$(ExportFolder)/index.html --headless" ConsoleToMSBuild="true" WorkingDirectory="$(MSBuildProjectDirectory)">
+        <Exec Command="$(LibGodotBuildDir)$(GodotEditor) --export-$(ExportFolder) $(ExportType) export/$(ExportType)_static_$(ExportFolder)/index.html --headless" ConsoleToMSBuild="true" WorkingDirectory="$(ProjectDirectory)">
             <Output TaskParameter="ConsoleOutput" PropertyName="OutputOfExec" />
         </Exec>
     </Target>
