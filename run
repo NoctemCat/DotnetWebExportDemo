@@ -94,10 +94,10 @@ __build_godot_editor() {
     fi
 }
 __build_godot_template_debug() {
-    __call_print scons target=template_debug $type_args production=yes debug_symbols=yes compiledb=yes disable_path_overrides=no $mono_args ${arg_rest[@]}
+    __call_print scons target=template_debug $type_args debug_symbols=yes compiledb=yes disable_path_overrides=no $mono_args ${arg_rest[@]}
 }
 __build_godot_template_release() {
-    __call_print scons target=template_release $type_args production=yes compiledb=yes disable_path_overrides=no $mono_args ${arg_rest[@]}
+    __call_print scons target=template_release $type_args compiledb=yes disable_path_overrides=no $mono_args ${arg_rest[@]}
 }
 
 

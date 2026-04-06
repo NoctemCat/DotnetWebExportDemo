@@ -1,7 +1,7 @@
 
 # C# Web Export Demo (With bonus LibGodot)
 
-Only works on linux and web. Link https://noctemcat.itch.io/wasm-demo
+Only works from Windows and Linux. Link https://noctemcat.itch.io/wasm-demo
 
 ## Major considerations 
 
@@ -58,29 +58,31 @@ dotnet run -c Debug -p:GodotType=shared -p:GodotArch=x86_64 --editor
 
 Prerequesites:
 - Built C# editor with C# libraries. 
-- Install and activate Emscripten 3.1.56.
-- Replace <GodotEditor /> with your C# editor name in CSharpSample.csproj... I guess using -p:GodotEditor=name will also work?
+- **Install and activate Emscripten 3.1.56**.
+- Replace -p:GodotEditor=REPLACEWITHGODOTEDITOREXE with the actual name of your godot editor that was previous compiled.
+- Cannot have a space in the path leading up to the project.
+- Must be on C: drive (if using Windows).
 ```
-bash run build godot template_release static mono platform=web disable_crash_handler=yes 
-bash run build csharp template_release static platform=web
+bash run build godot template_release static mono platform=web disable_crash_handler=yes
+bash run build csharp template_release static platform=web -p:GodotEditor=REPLACEWITHGODOTEDITOREXE
 emrun csharp_project/export/Web_static_release/
 ```
 ```
 Godot folder:
-scons target=template_release platform=web library_type=static_library extra_suffix=static production=yes compiledb=yes disable_path_overrides=no module_mono_enabled=yes disable_crash_handler=yes
+scons target=template_release platform=web library_type=static_library extra_suffix=static compiledb=yes disable_path_overrides=no module_mono_enabled=yes disable_crash_handler=yes
 CSharp folder:
-dotnet publish -v:d -c ExportRelease -r browser-wasm -p:GodotType=static -p:GodotArch=wasm32
+dotnet publish -v:d -c ExportRelease -r browser-wasm -p:GodotType=static -p:GodotArch=wasm32 -p:GodotEditor=REPLACEWITHGODOTEDITOREXE
 emrun csharp_project/export/Web_static_release/
 ```
 Or a version without threads:
 ```
 bash run build godot template_release static mono platform=web disable_crash_handler=yes threads=no
-bash run build csharp template_release static platform=web suffix=nothreads
+bash run build csharp template_release static platform=web suffix=nothreads -p:GodotEditor=REPLACEWITHGODOTEDITOREXE
 emrun csharp_project/export/WebNothreads_static_release/
 ```
 ```
 Godot folder:
-scons target=template_release platform=web library_type=static_library extra_suffix=static production=yes compiledb=yes disable_path_overrides=no module_mono_enabled=yes disable_crash_handler=yes threads=no
+scons target=template_release platform=web library_type=static_library extra_suffix=static compiledb=yes disable_path_overrides=no module_mono_enabled=yes disable_crash_handler=yes threads=no
 CSharp folder:
 dotnet publish -v:d -c ExportRelease -r browser-wasm -p:GodotType=static -p:GodotArch=wasm32 -p:ExtraSuffix=nothreads
 emrun csharp_project/export/WebNothreads_static_release/
