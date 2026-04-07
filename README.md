@@ -15,13 +15,10 @@ it will be new enough to use allow-multiple-definition https://github.com/llvm/l
 - C# with multithreading runs main C# thread as a thread https://github.com/dotnet/runtime/issues/101421 .
 - Added offscreen canvas for it, but it needs a hack to transfer offscreen canvas to the C# "main" thread, see "web_interop/transferCanvas.js".
 - No webxr. Should be possible to add it, but I think it would be better to wait for a newer emscripten.
-- Function pointers with long or ulong parameters(like, `delegate* unmanaged<ulong, void>`) don't generate trampolines to native code.
-`[UnmanagedFunctionPointer(CallingConvention.Winapi)]` delegate can be used to force their generation.
 
 ## What is left to do
 
 - Validate scons changes for correct usage.
-- Only 2 trampolines were generated with `UnmanagedFunctionPointer`, need to force the generation of others.
 - Export plugin. for now it just doesn't use it for C# and skips it. Basically it treats it as a C++ custom template.
 - SDK integration. Figured there would be no point in it if it won't be used. And I have no idea how to integrate it gracefully.
 

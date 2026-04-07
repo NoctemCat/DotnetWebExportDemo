@@ -35,11 +35,6 @@ public partial class Player : CharacterBody3D
         {
             GD.Print($"Read {floatValue}");
         }
-
-        // Uncomment this for crash, [UnmanagedFunctionPointer] can be used to force the  
-        // generation of trampolines with long and ulong type arguments
-        // GD.Seed(123);
-
         GD.Print("Player constructor exit");
     }
 
@@ -49,13 +44,14 @@ public partial class Player : CharacterBody3D
         // Input.UseAccumulatedInput = false;
         Input.MouseMode = Input.MouseModeEnum.Captured;
 
+        GD.Seed(123);
         GD.Print($"Is main thread {GodotThread.IsMainThread()}");
         GD.PrintS("Main Thread", Thread.CurrentThread.ManagedThreadId);
         TestThread();
 
         RunCrypro();
 #if !GODOT_THREADS_ENABLED
-        // Causes too much deadlocks at rundom with multithreading
+        // Causes too much deadlocks at random with multithreading
         RunHTTP();
 #endif
 #if GODOT_WEB
