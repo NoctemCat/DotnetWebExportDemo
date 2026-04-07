@@ -467,12 +467,53 @@ internal static partial class Program
     [LibraryImport("libgodot")]
     private static partial byte web_iteration();
 
-    // Generate web trampolines
-    // C# doesnt't automatically generate them if long or ulong is used as a parameter type
+    // Generate web trampolines, in alphabetical order
+    // C# doesnt't automatically generate them if delegate is of type delegate* unmanaged<[contains long or ulong]>
+    // I don't really see any being added any time soon so manually declaring them should be fine
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    public delegate nint godotsharp_method_bind_get_method_with_compatibility_sig_sig(Godot.NativeInterop.godot_string_name _0, Godot.NativeInterop.godot_string_name _1, ulong _2);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    public delegate Godot.NativeInterop.godot_packed_int64_array godotsharp_packed_int64_array_new_mem_copy_sig(long _0, int _1);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    public delegate long godotsharp_variant_as_int_sig_sig(Godot.NativeInterop.godot_variant _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    public delegate nint godotsharp_method_bind_get_method_with_compatibility_sig(Godot.NativeInterop.godot_string_name _0, Godot.NativeInterop.godot_string_name _1, ulong _2);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    public delegate void godotsharp_packed_byte_array_decompress_sig_sig(Godot.NativeInterop.godot_packed_byte_array _0, long _1, int _2, Godot.NativeInterop.godot_packed_byte_array _3);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    public delegate void godotsharp_packed_byte_array_decompress_dynamic_sig_sig(Godot.NativeInterop.godot_packed_byte_array _0, long _1, int _2, Godot.NativeInterop.godot_packed_byte_array _3);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    internal delegate nint godotsharp_instance_from_id_sig(ulong _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    internal delegate uint godotsharp_rand_from_seed_sig(ulong _0, ulong _1);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    public delegate void godotsharp_seed_sig(ulong _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_string_size_sig(Godot.NativeInterop.godot_string _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_byte_array_size_sig(Godot.NativeInterop.godot_packed_byte_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_int32_array_size_sig(Godot.NativeInterop.godot_packed_int32_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_int64_array_size_sig(Godot.NativeInterop.godot_packed_int64_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_float32_array_size_sig(Godot.NativeInterop.godot_packed_float32_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_float64_array_size_sig(Godot.NativeInterop.godot_packed_float64_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_string_array_size_sig(Godot.NativeInterop.godot_packed_string_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_vector2_array_size_sig(Godot.NativeInterop.godot_packed_vector2_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_vector3_array_size_sig(Godot.NativeInterop.godot_packed_vector3_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_vector4_array_size_sig(Godot.NativeInterop.godot_packed_vector4_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_packed_color_array_size_sig(Godot.NativeInterop.godot_packed_color_array _0);
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] 
+    public delegate long godotsharp_array_size_sig(Godot.NativeInterop.godot_array _0);
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     private delegate nint classdb_get_method_bind_sig(nint _1, nint _2, long _3);
-    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
-    private delegate IntPtr godotsharp_instance_from_id_sig(ulong _1);
 
     private static GodotInstance? instance = null;
     private static bool shutdownComplete = false;
